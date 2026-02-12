@@ -26,12 +26,6 @@ async def grade_answers(
 
     Returns a GradingResult with per-answer feedback and overall pass/fail.
     """
-    if not GRADE_ANSWERS_PROMPT:
-        raise RuntimeError(
-            "GRADE_ANSWERS_PROMPT is not implemented yet. "
-            "See TODO(human) in app/llm/prompts.py"
-        )
-
     prompt = GRADE_ANSWERS_PROMPT.format(
         diff_content=diff_content[:15000],
         questions_json=json.dumps(questions),
