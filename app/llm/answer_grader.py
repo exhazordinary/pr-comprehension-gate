@@ -45,7 +45,15 @@ async def grade_answers(
             messages=[{"role": "user", "content": prompt}],
         )
         raw = response.choices[0].message.content
-        parsed = json.loads(raw)
+        logger.info("Grader raw LLM response: %s", raw[:500] if raw else "(empty)")
+        # Strip markdown fencing if present
+        cleaned = raw.strip() if raw else ""
+        if cleaned.startswith("```"):
+            cleaned = "\n".join(cleaned.split("\n")[1:])
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3]
+            cleaned = cleaned.strip()
+        parsed = json.loads(cleaned)
 
         return GradingResult(
             overall_pass=parsed["overall_pass"],

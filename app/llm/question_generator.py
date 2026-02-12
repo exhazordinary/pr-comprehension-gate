@@ -37,7 +37,15 @@ async def generate_questions(diff_content: str, is_large: bool = False) -> list[
             messages=[{"role": "user", "content": prompt}],
         )
         raw = response.choices[0].message.content
-        parsed = json.loads(raw)
+        logger.info("Generator raw LLM response: %s", raw[:500] if raw else "(empty)")
+        # Strip markdown fencing if present
+        cleaned = raw.strip() if raw else ""
+        if cleaned.startswith("```"):
+            cleaned = "\n".join(cleaned.split("\n")[1:])
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3]
+            cleaned = cleaned.strip()
+        parsed = json.loads(cleaned)
         questions = parsed["questions"]
 
         if not isinstance(questions, list) or not (MIN_QUESTIONS <= len(questions) <= MAX_QUESTIONS):

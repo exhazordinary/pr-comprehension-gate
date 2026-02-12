@@ -199,12 +199,14 @@ async def handle_comment_event(payload: dict) -> None:
 
         # Ignore bot's own comments
         if comment["user"].get("type") == "Bot":
+            logger.info("Ignoring bot comment from %s", comment_author)
             return
 
         owner = repo["owner"]["login"]
         repo_name = repo["name"]
         pr_number = issue["number"]
         pr_id = f"{owner}/{repo_name}#{pr_number}"
+        logger.info("Processing comment on %s from %s", pr_id, comment_author)
 
         # Look up the review record
         async with async_session() as session:
@@ -213,13 +215,17 @@ async def handle_comment_event(payload: dict) -> None:
             )).scalar_one_or_none()
 
         if not review:
+            logger.info("No review record for %s, ignoring", pr_id)
             return  # not a tracked PR
 
         if review.status == "passed":
+            logger.info("PR %s already passed, ignoring", pr_id)
             return  # already passed, don't re-grade
 
         # Parse answers
+        logger.info("Comment body: %s", comment_body[:200])
         answers = parse_numbered_answers(comment_body)
+        logger.info("Parsed %d answers from comment", len(answers))
         expected_count = len(review.questions)
 
         if len(answers) < expected_count:
