@@ -2,7 +2,7 @@ import json
 import logging
 from dataclasses import dataclass
 
-import anthropic
+from openai import AsyncOpenAI
 
 from app.config import get_settings
 from app.llm.prompts import GRADE_ANSWERS_PROMPT
@@ -22,7 +22,7 @@ async def grade_answers(
     questions: list[str],
     answers: list[str],
 ) -> GradingResult:
-    """Grade reviewer answers against the PR diff using Claude.
+    """Grade reviewer answers against the PR diff via OpenRouter.
 
     Returns a GradingResult with per-answer feedback and overall pass/fail.
     """
@@ -33,15 +33,18 @@ async def grade_answers(
     )
 
     settings = get_settings()
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    client = AsyncOpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=settings.openrouter_api_key,
+    )
 
     try:
-        message = await client.messages.create(
-            model="claude-sonnet-4-5-20250929",
+        response = await client.chat.completions.create(
+            model=settings.llm_model,
             max_tokens=2048,
             messages=[{"role": "user", "content": prompt}],
         )
-        raw = message.content[0].text
+        raw = response.choices[0].message.content
         parsed = json.loads(raw)
 
         return GradingResult(
@@ -50,7 +53,7 @@ async def grade_answers(
             summary=parsed["summary"],
         )
 
-    except (json.JSONDecodeError, KeyError, anthropic.APIError) as exc:
+    except (json.JSONDecodeError, KeyError, Exception) as exc:
         logger.error("Answer grading failed: %s", exc)
         return GradingResult(
             overall_pass=False,

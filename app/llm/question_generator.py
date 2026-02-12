@@ -1,7 +1,7 @@
 import json
 import logging
 
-import anthropic
+from openai import AsyncOpenAI
 
 from app.config import get_settings
 from app.llm.prompts import QUESTION_GENERATION_PROMPT
@@ -13,7 +13,7 @@ MAX_QUESTIONS = 5
 
 
 async def generate_questions(diff_content: str, is_large: bool = False) -> list[str]:
-    """Generate comprehension questions from a PR diff using Claude.
+    """Generate comprehension questions from a PR diff via OpenRouter.
 
     Returns a list of 3-5 question strings.
     Falls back to generic questions on API failure.
@@ -21,19 +21,22 @@ async def generate_questions(diff_content: str, is_large: bool = False) -> list[
     num_questions = MAX_QUESTIONS if is_large else MIN_QUESTIONS
     prompt = QUESTION_GENERATION_PROMPT.format(
         num_questions=num_questions,
-        diff_content=diff_content[:15000],  # limit context size
+        diff_content=diff_content[:15000],
     )
 
     settings = get_settings()
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    client = AsyncOpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=settings.openrouter_api_key,
+    )
 
     try:
-        message = await client.messages.create(
-            model="claude-sonnet-4-5-20250929",
+        response = await client.chat.completions.create(
+            model=settings.llm_model,
             max_tokens=1024,
             messages=[{"role": "user", "content": prompt}],
         )
-        raw = message.content[0].text
+        raw = response.choices[0].message.content
         parsed = json.loads(raw)
         questions = parsed["questions"]
 
@@ -43,7 +46,7 @@ async def generate_questions(diff_content: str, is_large: bool = False) -> list[
 
         return questions
 
-    except (json.JSONDecodeError, KeyError, anthropic.APIError) as exc:
+    except (json.JSONDecodeError, KeyError, Exception) as exc:
         logger.error("Question generation failed: %s", exc)
         return _fallback_questions()
 

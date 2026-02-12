@@ -10,7 +10,8 @@ class Settings(BaseSettings):
     github_app_id: str
     github_private_key: str  # base64-encoded PEM key
     webhook_secret: str
-    anthropic_api_key: str
+    openrouter_api_key: str
+    llm_model: str = "anthropic/claude-sonnet-4"  # any OpenRouter model slug
     database_url: str = "sqlite+aiosqlite:///pr_reviews.db"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
