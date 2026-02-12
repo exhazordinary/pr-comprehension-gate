@@ -16,6 +16,7 @@ from app.llm.answer_grader import grade_answers
 from app.llm.question_generator import generate_questions
 from app.models.database import async_session, init_db
 from app.models.schemas import PRReview
+from app.metrics import metrics
 from app.utils.security import verify_github_signature
 
 logging.basicConfig(level=logging.INFO)
@@ -35,6 +36,12 @@ app = FastAPI(title="PR Comprehension Gate", lifespan=lifespan)
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/metrics")
+async def get_metrics():
+    """Return aggregate review metrics (in-memory, resets on deploy)."""
+    return metrics.to_dict()
 
 
 @app.post("/webhooks/github")
@@ -165,6 +172,7 @@ async def handle_pr_event(payload: dict) -> None:
             owner, repo_name, pr_sha, "pending",
             "Awaiting reviewer comprehension answers", token,
         )
+        metrics.record_questions_generated(len(questions))
         logger.info("Posted %d questions for %s", len(questions), pr_id)
 
     except Exception:
@@ -308,6 +316,7 @@ async def handle_comment_event(payload: dict) -> None:
                 "Comprehension check failed — re-review required", token,
             )
 
+        metrics.record_review_result(result.overall_pass, len(answers))
         logger.info("Graded %s: %s", pr_id, "PASS" if result.overall_pass else "FAIL")
 
     except Exception:
