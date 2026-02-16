@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     github_private_key: str  # base64-encoded PEM key
     webhook_secret: str
     openrouter_api_key: str
-    llm_model: str = "anthropic/claude-sonnet-4"  # any OpenRouter model slug
+    llm_model: str = "google/gemini-2.5-flash"  # any OpenRouter model slug
     database_url: str = "sqlite+aiosqlite:///pr_reviews.db"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
