@@ -69,6 +69,7 @@ app/
 │   ├── database.py          # Async SQLAlchemy + SQLite setup
 │   └── schemas.py           # PRReview ORM model
 └── utils/
+    ├── rate_limiter.py      # In-memory sliding window rate limiter
     └── security.py          # HMAC-SHA256 webhook signature verification
 ```
 
